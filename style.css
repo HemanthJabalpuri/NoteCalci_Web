@@ -1,0 +1,228 @@
+/**
+ * @fileoverview Port of design settings and themes from upstream NerdCalci style resources.
+ * Upstream reference: app/src/main/res/values/colors.xml
+ */
+
+/* Colors CSS Variables */
+:root {
+  --bg-primary: #1e1e24;
+  --bg-editor: #121216;
+  --bg-sidebar: #18181c;
+  --border-color: #2e2e36;
+  --text-primary: #e2e2eb;
+  --text-muted: #83839b;
+  --accent-color: #6366f1;
+  --result-success: #38bdf8;
+  --result-error: #ef4444;
+  --result-empty: transparent;
+
+  /* Text Gutter Metric Synchronizer Variables */
+  --editor-font-family: "Fira Code", "JetBrains Mono", "Consolas", "Courier New", monospace;
+  --editor-font-size: 15px;
+  --editor-line-height: 26px; /* Absolute PIXEL value ensures zero alignment drifts */
+  --editor-padding-vertical: 20px;
+}
+
+/* Reset & Defaults */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* App Container Layout */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-sidebar);
+  border-bottom: 1px solid var(--border-color);
+  padding: 12px 24px;
+  height: 56px;
+}
+
+.app-title {
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-sub {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+  background-color: var(--border-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.status-badge {
+  font-size: 12px;
+  color: var(--result-success);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  background-color: rgba(56, 189, 248, 0.05);
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+/* Workspace Split Panel */
+.workspace-grid {
+  display: grid;
+  grid-template-columns: 1fr 280px 300px; /* editor, results, sidebar */
+  height: calc(100vh - 56px);
+  position: relative;
+}
+
+/* Left Workspace Section */
+.editor-workspace {
+  display: flex;
+  background-color: var(--bg-editor);
+  position: relative;
+  height: 100%;
+}
+
+/* Gutter panes: line numbering numbers column */
+.gutter-pane {
+  color: var(--text-muted);
+  font-family: var(--editor-font-family);
+  font-size: var(--editor-font-size);
+  text-align: right;
+  flex-shrink: 0;
+  overflow: hidden; /* Scrolling synced programmatically via JS */
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+}
+
+.line-numbers-gutter {
+  width: 48px;
+  padding-top: var(--editor-padding-vertical);
+  padding-bottom: var(--editor-padding-vertical);
+  padding-right: 12px;
+}
+
+.line-number-item {
+  height: var(--editor-line-height);
+  line-height: var(--editor-line-height);
+}
+
+/* Central text calculation script editor */
+.input-editor {
+  flex-grow: 1;
+  background-color: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  color: var(--text-primary);
+  font-family: var(--editor-font-family);
+  font-size: var(--editor-font-size);
+  line-height: var(--editor-line-height);
+  padding-top: var(--editor-padding-vertical);
+  padding-bottom: var(--editor-padding-vertical);
+  padding-left: 20px;
+  padding-right: 20px;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+  overflow-y: scroll; /* Hard enforcing forces native scrollbar footprint matching */
+  height: 100%;
+}
+
+/* Middle calculations output gutter */
+.results-pane {
+  background-color: var(--bg-sidebar);
+  border-left: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  font-family: var(--editor-font-family);
+  font-size: var(--editor-font-size);
+  padding-top: var(--editor-padding-vertical);
+  padding-bottom: var(--editor-padding-vertical);
+  padding-left: 16px;
+  padding-right: 16px;
+  overflow-y: hidden; /* Auto scroll heights aligned via index sync */
+  height: 100%;
+}
+
+.results-pane div {
+  height: var(--editor-line-height);
+  line-height: var(--editor-line-height);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-item-success {
+  color: var(--result-success);
+  font-weight: 500;
+}
+
+.result-item-error {
+  color: var(--result-error);
+  font-weight: 500;
+  font-style: italic;
+}
+
+.result-item-empty {
+  color: var(--result-empty);
+}
+
+/* Right Side Layout CheatSheet */
+.cheatsheet-sidebar {
+  background-color: var(--bg-primary);
+  overflow-y: auto;
+  padding: 24px;
+  border-left: 1px solid var(--border-color);
+}
+
+.cheatsheet-sidebar h3 {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-color);
+  margin-bottom: 16px;
+}
+
+.cheat-section {
+  margin-bottom: 20px;
+}
+
+.cheat-section h4 {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.cheat-section ul {
+  list-style: none;
+  font-size: 12px;
+}
+
+.cheat-section li {
+  margin-bottom: 6px;
+  color: var(--text-muted);
+}
+
+.cheat-section code {
+  background-color: var(--bg-editor);
+  color: var(--text-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--editor-font-family);
+}

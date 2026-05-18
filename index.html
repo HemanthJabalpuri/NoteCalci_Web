@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NoteCalci Web 🧮</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Application Header Header -->
+    <header class="app-header">
+      <div class="app-title">
+        <span class="logo-icon">🧮</span> NoteCalci <span class="title-sub">Web (v1)</span>
+      </div>
+      <div class="app-status">
+        <span class="status-badge">Offline-First</span>
+      </div>
+    </header>
+
+    <!-- Main Workspace Workspace Split -->
+    <main class="workspace-grid">
+      <!-- Left section: Editor and Gutters -->
+      <div class="editor-workspace">
+        <!-- Gutters: Line numbering -->
+        <div id="line-numbers" class="gutter-pane line-numbers-gutter"></div>
+        
+        <!-- Input text block calculator -->
+        <textarea 
+          id="editor" 
+          class="input-editor" 
+          spellcheck="false" 
+          placeholder="# NoteCalci Web Calculator&#10;# Define variables, perform BODMAS math & use block aggregate summaries&#10;&#10;price = 1500 # target base&#10;tax = 12% # percentage definition&#10;tax_amount = tax of price&#10;&#10;total_bill = price + tax_amount&#10;&#10;# Shorthand operator compound values&#10;bills_count = 0&#10;bills_count++&#10;&#10;# Dynamic aggregate variables&#10;total # sums standard parent block results upward&#10;avg # calculates immediate block average"></textarea>
+      </div>
+
+      <!-- Middle section: Calculated Line Outputs -->
+      <div id="results" class="results-pane"></div>
+
+      <!-- Right section: Help CheatSheet Sidebar -->
+      <aside class="cheatsheet-sidebar">
+        <h3>Syntax Cheatsheet</h3>
+        <div class="cheat-section">
+          <h4>Variables & Functions</h4>
+          <ul>
+            <li><code>x = 250</code> (Define variable)</li>
+            <li><code>total = x * 2.5</code> (Multiply variable)</li>
+            <li><code>sqrt(100)</code> (Standard Root)</li>
+            <li><code>pow(2, 10)</code> (Binary Power exponent)</li>
+          </ul>
+        </div>
+
+        <div class="cheat-section">
+          <h4>Percentages shorthand</h4>
+          <ul>
+            <li><code>20% of 15000</code> (Part computation)</li>
+            <li><code>15% off 1000</code> (Discounted calculation)</li>
+            <li><code>5000 + 10%</code> (Dynamic increase inline)</li>
+            <li><code>5000 - 20%</code> (Dynamic decrease inline)</li>
+          </ul>
+        </div>
+
+        <div class="cheat-section">
+          <h4>Incremental Compounds</h4>
+          <ul>
+            <li><code>x++</code> / <code>x--</code> (Scalar steps)</li>
+            <li><code>x += 10</code> (Compound additions)</li>
+            <li><code>x *= 5</code> (Compound multiplications)</li>
+          </ul>
+        </div>
+
+        <div class="cheat-section">
+          <h4>Block Aggregations</h4>
+          <ul>
+            <li><code>sum</code> / <code>total</code> (Current block sum)</li>
+            <li><code>avg</code> / <code>average</code> (Current block avg)</li>
+            <li><code>grand_total</code> (Document totals)</li>
+            <li><code>prev</code> / <code>last</code> / <code>_</code> (Preceding line)</li>
+            <li><code>lineno</code> (Current row index)</li>
+          </ul>
+        </div>
+
+        <div class="cheat-section">
+          <h4>Comments</h4>
+          <ul>
+            <li>Lines of notes starts with <code>#</code></li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Sequential scripts boots for direct file:/// protocol loading -->
+  <script src="core/Lexer.js"></script>
+  <script src="core/Parser.js"></script>
+  <script src="core/MathEngine.js"></script>
+  <script src="ui/CalculatorScreen.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      new window.NoteCalci.CalculatorScreen();
+    });
+  </script>
+</body>
+</html>
