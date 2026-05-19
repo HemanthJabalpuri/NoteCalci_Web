@@ -3,7 +3,7 @@
  * preserving preceding cache namespaces side-by-side, and coordinating dynamic version rollbacks.
  */
 
-const CACHE_NAME = 'notecalci_cache_v4';
+const CACHE_NAME = 'notecalci_cache_v1';
 const ASSETS = [
   'index.html',
   'style.css',
