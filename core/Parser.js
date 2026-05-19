@@ -75,6 +75,20 @@
         this.target = target;
       }
     };
+
+    static FunctionDefinition = class extends Statement {
+      /**
+       * @param {string} name Function name
+       * @param {string[]} params List of parameter names
+       * @param {Statement[]} body Function body statements
+       */
+      constructor(name, params, body) {
+        super();
+        this.name = name;
+        this.params = params;
+        this.body = body;
+      }
+    };
   }
 
   class Expr {
@@ -261,10 +275,79 @@
     }
 
     /**
+     * Look ahead to check if this is a function definition like `f(x, y) = ...`
+     * We are currently *before* the function name, but we know peek() is IDENTIFIER.
+     * We know peekAt(1) is LPAREN.
+     * We need to find the RPAREN and see if the next token is EQUALS.
+     * @returns {boolean}
+     */
+    isFunctionDefinition() {
+      let offset = 2;
+      let depth = 1;
+      while (this.peekAt(offset) !== TokenKind.EOF && depth > 0) {
+        const kind = this.peekAt(offset);
+        if (kind === TokenKind.LPAREN) {
+          depth++;
+        } else if (kind === TokenKind.RPAREN) {
+          depth--;
+        }
+        offset++;
+      }
+      return this.peekAt(offset) === TokenKind.EQUALS;
+    }
+
+    /**
+     * Parses a function definition. We have already consumed the function name.
+     * The next token is `(`.
+     * e.g. `(x, y) = x + y;`
+     * A function body can contain multiple statements separated by `;`.
+     * @param {string} name Function name
+     * @returns {Statement.FunctionDefinition}
+     */
+    parseFunctionDefinition(name) {
+      this.expect(TokenKind.LPAREN);
+      const params = [];
+      if (this.peekKind() === TokenKind.IDENTIFIER) {
+        params.push(this.advance().lexeme);
+        while (this.peekKind() === TokenKind.COMMA) {
+          this.advance(); // consume ","
+          params.push(this.expect(TokenKind.IDENTIFIER).lexeme);
+        }
+      }
+      this.expect(TokenKind.RPAREN);
+      this.expect(TokenKind.EQUALS);
+
+      const body = [];
+      while (!this.isAtEnd()) {
+        body.push(this.parseStatement(false)); // Prevent nested function defs (allowFunctionDef=false)
+        if (this.peekKind() === TokenKind.SEMICOLON) {
+          this.advance(); // skip past ";"
+        } else {
+          break;
+        }
+      }
+      return new Statement.FunctionDefinition(name, params, body);
+    }
+
+    /**
      * Detects and isolates statements: Assignments, Compounds, Increments, or simple Expressions.
+     * @param {boolean} allowFunctionDef Whether function definitions are allowed inside this statement context.
      * @returns {Statement}
      */
-    parseStatement() {
+    parseStatement(allowFunctionDef = true) {
+      const kind = this.peekKind();
+      if (kind === TokenKind.IDENTIFIER && this.peekAt(1) === TokenKind.LPAREN) {
+        if (this.isFunctionDefinition()) {
+          const position = this.peek().position;
+          if (!allowFunctionDef) {
+            throw new Error(`Syntax error: Functions cannot be created inside other functions at position ${position}`);
+          }
+          const name = this.peek().lexeme;
+          this.advance(); // skip past function name
+          return this.parseFunctionDefinition(name);
+        }
+      }
+
       const checkpoint = this.pos;
       let target;
       try {

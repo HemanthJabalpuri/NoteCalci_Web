@@ -14,10 +14,14 @@ To ensure ease of porting new calculation features from [NerdCalci](https://gith
 | :--- | :--- | :--- |
 | **`core/Lexer.js`** | [core/Lexer.kt](https://github.com/vishaltelangre/NerdCalci/blob/v4.6.0/app/src/main/java/com/vishaltelangre/nerdcalci/core/Lexer.kt) | Scans line text inputs and generates standard syntactic tokens under the `NoteCalci` namespace. |
 | **`core/Parser.js`** | [core/Parser.kt](https://github.com/vishaltelangre/NerdCalci/blob/v4.6.0/app/src/main/java/com/vishaltelangre/nerdcalci/core/Parser.kt) | Performs grammar analysis using Recursive Descent parsing, respecting Operator Precedence (BODMAS). |
-| **`core/MathEngine.js`**| [core/MathEngine.kt](https://github.com/vishaltelangre/NerdCalci/blob/v4.6.0/app/src/main/java/com/vishaltelangre/nerdcalci/core/MathEngine.kt) & [Evaluator.kt](https://github.com/vishaltelangre/NerdCalci/blob/v4.6.0/app/src/main/java/com/vishaltelangre/nerdcalci/core/Evaluator.kt) | Manages document-wide evaluation flow, memory scopes, dynamic block variables, and decimal formatting. |
-| **`ui/CalculatorScreen.js`**| [ui/HomeScreen.kt](https://github.com/vishaltelangre/NerdCalci/blob/v4.6.0/app/src/main/java/com/vishaltelangre/nerdcalci/ui/home/HomeScreen.kt) | Coordinates the DOM viewports, splits scroll synchronizations, and updates results gutters. |
+| **`core/OperatorDispatcher.js`**| N/A (Web Extensibility layer) | Polymorphic algebra dispatcher resolving standard and custom unit or date operations (`+`, `-`, `*`, `/`). |
+| **`core/MathEngine.js`**| [core/MathEngine.kt](https://github.com/vishaltelangre/NerdCalci/blob/v4.6.0/app/src/main/java/com/vishaltelangre/nerdcalci/core/MathEngine.kt) & [Evaluator.kt](https://github.com/vishaltelangre/NerdCalci/blob/v4.6.0/app/src/main/java/com/vishaltelangre/nerdcalci/core/Evaluator.kt) | Manages document-wide evaluation flow, memory scopes, and dynamic AST Visitor walk loop. |
+| **`ui/NotesManager.js`** | N/A (Web LocalStorage layer) | Persistent workbook documents CRUD manager utilizing HTML5 LocalStorage. |
+| **`ui/NotesSidebar.js`** | Android sidebar navigation layouts | Component handling Note sidebar catalogs visual index lists, searches, and creations. |
+| **`ui/EditorWorkspace.js`**| Android layout gutters Compose templates | Component managing synced editor scroll coordinate locks, row overlays highlights, and line numbers. |
+| **`ui/CalculatorScreen.js`**| [ui/HomeScreen.kt](https://github.com/vishaltelangre/NerdCalci/blob/v4.6.0/app/src/main/java/com/vishaltelangre/nerdcalci/ui/home/HomeScreen.kt) | Clean Facade Controller orchestrating notes catalogs, synced layouts, and calculators calculations. |
 | **`index.html`** | Android UI layout XML resources | Host index file loaded sequentially in browsers via standard `<script>` tags. |
-| **`style.css`** | Compose XML themes & typography grids | Establishes precise pixel-level line structures and developer dark color presets. |
+| **`style.css`** | Compose XML themes & typography grids | Establishes precise pixel-level line structures, sidebars index lists, and About tabs. |
 
 ---
 
@@ -27,43 +31,44 @@ NoteCalci Web employs an offline execution pipeline that parses the document lin
 
 ```mermaid
 graph TD
-    subgraph UI Layer [View Lifecycle]
-        A[User Input in Editor] -->|ui/CalculatorScreen.js| B(Reparse Entire Document)
+    subgraph UI Layer [MVP View Lifecycle]
+        A[User Input/Rename] -->|ui/CalculatorScreen.js facade| B[ui/NotesManager.js CRUD auto-save]
+        A -->|CalculatorScreen callback| C[ui/EditorWorkspace.js sync gutters repaint]
     end
 
-    subgraph Core Engine Layer [MathEngine / Parser Pipeline]
-        B -->|Instantiate Fresh Context| C(MathContext)
-        C -->|Loop Line-by-Line| D{Is Comment or Blank?}
-        D -->|Yes| E[Ignore Line / Output Empty]
-        D -->|No| F[core/Lexer.js: Tokenize Line]
-        F -->|Token Stream| G[core/Parser.js: Generate AST]
-        G -->|Evaluate statement| H[core/MathEngine.js: Walk Tree]
-        H -->|Ref/Assign Variables| I(MathContext Scope Map)
-        H -->|Successful Evaluation| J[Return Float/Int Value]
-        H -->|Error Caught| K[Return Smart Diagnostic Message]
-      Inject[Inject sum, total, avg, last before parsing line] -.-> F
+    subgraph Core Engine Layer [AST Visitor Walk Pipeline]
+        C -->|MathEngine.calculate| D(Instantiate Fresh Context)
+        D -->|Loop Line-by-line| E{MathEngine.isProseLine?}
+        E -->|Yes - Prose text skipped| F[Ignore / Output empty spacer]
+        E -->|No - Active computation| G[core/Lexer.js: Tokenize line]
+        G -->|Token stream| H[core/Parser.js: Generate AST]
+        H -->|Evaluator.evaluate visitor map| I[core/OperatorDispatcher.js polymorphic rules]
+        I -->|Cascaded variables resolution| J(MathContext Scope variables)
+        J -->|Successful evaluated float| K[Return evaluated value]
+        J -->|Crashes caught| L[Return syntax error diagnostic Err]
     end
 
     subgraph Output Layer [Render Loop]
-        J --> L[CalculatorScreen: Paint Value in Gutter]
-        K --> M[CalculatorScreen: Paint Red Diagnostic Gutter Line]
+        K --> M[EditorWorkspace: update gutter results]
+        L --> N[EditorWorkspace: paint red error gutter]
     end
 ```
 
 ### Execution Pipeline Steps:
-1. **Keystroke Listeners:** `ui/CalculatorScreen.js` captures changes inside the editor, keeping text line heights and scrolling behavior synchronized with a separate side-gutter pane.
-2. **Execution Reset:** At the start of every document calculation pass, `MathEngine` clears all variable states to ensure sequential expression parsing.
-3. **Lexing (Lexer.js):** Raw lines of text (minus comments trailing after `#`) are tokenized into objects indicating values and structural types (`NUMBER`, `IDENTIFIER`, operators, or grouping `(,)`).
-4. **Parsing (Parser.js):** Iterates over the token stream using mathematical grammar rules to isolate components hierarchically:
-    - **Factors:** Numbers, parenthesized groups, or inline function calls (`sqrt()`, `sin()`).
-    - **Exponents:** Power operations (`^`).
-    - **Terms:** High-precedence multiplication, division, and modulo (`*`, `/`, `%`).
-    - **Expressions:** Low-precedence sums and differences (`+`, `-`).
-    - **Assignments:** Variable bindings mapped via the `=` token, saving state inside the `MathContext` registry.
-5. **Diagnostic Rendering:** The UI paints the successful results aligned with each editor line, or isolates syntax errors with structured messages (e.g. `Error: Variable "x" is not defined`).
+1. **MVP View Lifecycles:** `ui/CalculatorScreen.js` coordinates user keystroke adjustments, driving title renames into `NotesManager` auto-save layers and routing scroll wheel heights synchronously inside `EditorWorkspace`.
+2. **Grammar Sandboxing (isProseLine):** Plain English sentences, URLs, Markdown headers, and dividers containing unregistered words are filtered out to prevent parser exceptions.
+3. **Lexing (Lexer.js):** Active arithmetic equations are scanned, tokenizing brackets, variables, floats, and identifiers.
+4. **AST Parsing (Parser.js):** Generates hierarchical syntax nodes (`Expr.Binary`, `Expr.FunctionCall`) based on recursive operator precedence rules.
+5. **Visitor walkers (MathEngine.js & OperatorDispatcher.js):** Walks the AST using modular visitor callbacks mapped dynamically to `OperatorDispatcher` polymorphic type handlers.
+6. **Gutter Repaint:** Results list is loaded into the side pane side-by-side, and the background overlay paints horizontal underlines aligned with equations.
 
 ---
 
 ## 📜 Attribution & Licensing
 
-NoteCalci Web is a web port inspired by [NerdCalci](https://github.com/vishaltelangre/NerdCalci). Credit goes to **Vishal Telangre** and all contributors of the original open-source NerdCalci project. In alignment with the original project, this port is shared under the terms of the **GNU General Public License v3.0 (GPL-3.0)**.
+NoteCalci Web is a web compiler port inspired by and modeled after the native [NerdCalci by Vishal Telangre](https://github.com/vishaltelangre/NerdCalci).
+
+In addition, several prominent user-interface layouts (such as the dynamic horizontal highlights underlines backgrounds overlays, multi-sheet LocalStorage document workspaces list navigator sidebars, and frameless dynamic title renamer input bars) are inspired by and adapted from the excellent work of **Steve Ridout** on [Notepad Calculator](https://github.com/SteveRidout/notepad-calculator). We extend our deepest gratitude for his excellent open-source contributions.
+
+In alignment with both baseline projects, this web workbook utility is shared under the terms of the **GNU General Public License v3.0 (GPL-3.0)**.
+

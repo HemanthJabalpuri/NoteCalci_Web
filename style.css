@@ -20,7 +20,7 @@
   --editor-font-family: "Fira Code", "JetBrains Mono", "Consolas", "Courier New", monospace;
   --editor-font-size: 15px;
   --editor-line-height: 26px; /* Absolute PIXEL value ensures zero alignment drifts */
-  --editor-padding-vertical: 20px;
+  --editor-padding-vertical: 22px; /* 22px vertical top alignment locks compiler caretaker offsets */
 }
 
 /* Reset & Defaults */
@@ -30,12 +30,20 @@
   padding: 0;
 }
 
+html, body {
+  height: 100%;
+  height: 100dvh; /* Dynamic Viewport Height takes mobile browser URL/bottom bars into account */
+  margin: 0;
+  padding: 0;
+  position: fixed; /* Instructs browser mobile body wrapper layer is a fixed canvas */
+  overflow: hidden; /* Completely prevents keyboard-opening page slide-up glitches */
+  width: 100%;
+}
+
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  height: 100vh;
-  overflow: hidden;
 }
 
 /* App Container Layout */
@@ -43,33 +51,55 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
 }
 
 .app-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   background-color: var(--bg-sidebar);
   border-bottom: 1px solid var(--border-color);
-  padding: 12px 24px;
+  padding: 0 24px;
+  min-height: 56px;
   height: 56px;
 }
 
-.app-title {
-  font-size: 18px;
+.app-logo-area {
+  font-size: 15px;
   font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  color: var(--text-primary);
 }
 
-.title-sub {
-  font-size: 12px;
-  font-weight: 400;
+.header-nav {
+  display: flex;
+  gap: 8px;
+  height: 100%;
+  align-items: center;
+}
+
+.nav-tab {
+  background-color: transparent;
+  border: none;
+  outline: none;
   color: var(--text-muted);
-  background-color: var(--border-color);
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.nav-tab:hover {
+  color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.nav-tab.active {
+  color: var(--text-primary);
+  background-color: rgba(99, 102, 241, 0.15);
+  font-weight: 600;
 }
 
 .status-badge {
@@ -84,9 +114,11 @@ body {
 /* Workspace Split Panel */
 .workspace-grid {
   display: grid;
-  grid-template-columns: 1fr 280px 300px; /* editor, results, sidebar */
+  grid-template-columns: 250px 1fr 280px; /* Notes sidebar, Synced Editor, Synced Gutter results */
   height: calc(100vh - 56px);
+  height: calc(100dvh - 56px);
   position: relative;
+  overflow: hidden; /* Prevent grid expanding beyond viewport bounds */
 }
 
 /* Left Workspace Section */
@@ -95,6 +127,8 @@ body {
   background-color: var(--bg-editor);
   position: relative;
   height: 100%;
+  min-height: 0; /* Force flex container to respect grid parent height and shrink! */
+  overflow: hidden;
 }
 
 /* Gutter panes: line numbering numbers column */
@@ -141,9 +175,27 @@ body {
   overflow-x: auto;
   overflow-y: scroll; /* Hard enforcing forces native scrollbar footprint matching */
   height: 100%;
+  position: relative;
+  z-index: 2;
 }
 
 /* Middle calculations output gutter */
+.results-pane-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.results-header-spacer {
+  height: 43px; /* matches the height of note-title-container exactly */
+  border-bottom: 1px solid var(--border-color);
+  border-left: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  background-color: var(--bg-sidebar);
+  box-sizing: border-box;
+}
+
 .results-pane {
   background-color: var(--bg-sidebar);
   border-left: 1px solid var(--border-color);
@@ -156,6 +208,8 @@ body {
   padding-right: 16px;
   overflow-y: hidden; /* Auto scroll heights aligned via index sync */
   height: 100%;
+  min-height: 0; /* Explicitly clamp flex/grid sizing bounds */
+  flex-grow: 1;
 }
 
 .results-pane div {
@@ -170,59 +224,488 @@ body {
 .result-item-success {
   color: var(--result-success);
   font-weight: 500;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border-color); /* solid ruled ledger matching notepadcalculator.com specs */
+}
+
+/* Row Background Highlighter CSS classes */
+.row-backgrounds-pane {
+  position: absolute;
+  top: 0;
+  left: 48px; /* starts exactly after line numbers gutter */
+  right: 0;
+  height: 100%;
+  pointer-events: none; /* passes clicks directly to textarea */
+  z-index: 1;
+  font-family: var(--editor-font-family);
+  font-size: var(--editor-font-size);
+  padding-top: var(--editor-padding-vertical);
+  padding-bottom: var(--editor-padding-vertical);
+  overflow: hidden;
+}
+
+.row-bg-item {
+  height: var(--editor-line-height);
+  box-sizing: border-box;
+}
+
+.row-bg-math {
+  border-bottom: 1px solid var(--border-color); /* solid math line underline inside the editor */
 }
 
 .result-item-error {
   color: var(--result-error);
   font-weight: 500;
   font-style: italic;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border-color); /* active underline under error gutters */
 }
 
 .result-item-empty {
   color: var(--result-empty);
 }
 
-/* Right Side Layout CheatSheet */
-.cheatsheet-sidebar {
-  background-color: var(--bg-primary);
+/* Notes Sidebar styles */
+.notes-sidebar {
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  position: relative;
+}
+
+.btn-new-note {
+  background-color: var(--accent-color);
+  color: #fff;
+  border: none;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  margin: 16px;
+  transition: background-color 0.2s ease;
+  outline: none;
+}
+
+.btn-new-note:hover {
+  background-color: #4f46e5;
+}
+
+.notes-list-container {
+  flex-grow: 1;
   overflow-y: auto;
-  padding: 24px;
-  border-left: 1px solid var(--border-color);
+  padding: 0 16px;
 }
 
-.cheatsheet-sidebar h3 {
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--accent-color);
-  margin-bottom: 16px;
+.note-list-item {
+  padding: 10px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background-color 0.2s, color 0.2s;
 }
 
-.cheat-section {
-  margin-bottom: 20px;
+.note-list-item:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
 }
 
-.cheat-section h4 {
+.note-list-item.active {
+  background-color: rgba(99, 102, 241, 0.15);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.danger-btn {
+  background-color: transparent;
+  color: var(--result-error);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
   font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+  outline: none;
+}
+
+.danger-btn:hover {
+  background-color: rgba(239, 68, 68, 0.08);
+  border-color: var(--result-error);
+}
+
+/* Frameless title rename input field */
+.editor-workspace-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  flex-grow: 1;
+}
+
+.note-title-container {
+  height: 43px; /* matches results-header-spacer exactly */
+  box-sizing: border-box;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-editor);
+  display: flex;
+  align-items: center;
+}
+
+.note-title-input {
+  background-color: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--editor-font-family);
+  font-size: 15px;
+  font-weight: 600;
+  width: 100%;
+  padding: 0;
+  height: 18px;
+  line-height: 18px;
+}
+
+/* About pane tab styles */
+.about-pane {
+  height: calc(100vh - 56px);
+  height: calc(100dvh - 56px);
+  overflow-y: auto;
+  background-color: var(--bg-editor);
+  padding: 48px 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.about-content {
+  max-width: 800px;
+  width: 100%;
+}
+
+.about-content h2 {
+  font-size: 24px;
   font-weight: 700;
   color: var(--text-primary);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.about-lead {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin-bottom: 36px;
+}
+
+.about-content h3 {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--text-primary);
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 48px;
+}
+
+.about-card {
+  background-color: var(--bg-sidebar);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.about-card h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.about-card p {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+.about-card ul {
+  padding-left: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.about-card code {
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: var(--editor-font-family);
+  color: var(--text-primary);
+}
+
+.danger-zone-container {
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  background-color: rgba(239, 68, 68, 0.03);
+  border-radius: 8px;
+  padding: 24px;
+  margin-top: 24px;
+}
+
+.danger-zone-container h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--result-error);
   margin-bottom: 8px;
 }
 
-.cheat-section ul {
-  list-style: none;
+.danger-zone-container p {
   font-size: 12px;
-}
-
-.cheat-section li {
-  margin-bottom: 6px;
   color: var(--text-muted);
+  margin-bottom: 16px;
+  line-height: 1.5;
 }
 
-.cheat-section code {
-  background-color: var(--bg-editor);
+.danger-zone-btn {
+  background-color: var(--result-error);
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  outline: none;
+}
+
+.danger-zone-btn:hover {
+  background-color: #dc2626;
+}
+
+.rollback-btn {
+  background-color: transparent;
   color: var(--text-primary);
-  padding: 2px 6px;
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
   border-radius: 4px;
-  font-family: var(--editor-font-family);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+  outline: none;
+}
+
+.rollback-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: var(--text-muted);
+}
+
+.hidden {
+  display: none !important;
+}
+
+
+.line-numbers-gutter {
+  min-height: 100%;
+}
+
+/* Mobile Hamburger button (Hidden on desktop width layouts) */
+.btn-hamburger {
+  display: none;
+  background-color: transparent;
+  border: none;
+  outline: none;
+  font-size: 18px;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 8px;
+  margin-right: 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.btn-hamburger:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* ------------------- Mobile responsive viewports media queries ------------------- */
+@media (max-width: 768px) {
+  /* 1. Display Menu icon inside headers logo area */
+  .btn-hamburger {
+    display: block;
+  }
+
+  .app-logo-area {
+    display: flex;
+    align-items: center;
+  }
+
+  /* 2. Pivot three-column grid to mobile editor and results strip */
+  .workspace-grid {
+    grid-template-columns: 1fr 86px;
+  }
+
+  /* 3. Transform Left Notes Sidebar into a translation slide-out Drawer overlay */
+  .notes-sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 250px;
+    height: 100%;
+    z-index: 10;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.6);
+    border-right: 1px solid var(--border-color);
+  }
+
+  /* Slide drawer open overlay selector */
+  .notes-sidebar.drawer-open {
+    transform: translateX(0);
+  }
+
+  /* 4. Header navigation tabs compaction */
+  .app-header {
+    padding: 0 12px;
+  }
+
+  .app-status {
+    display: none !important; /* Recovery of 100px horizontal spaces hides status badge on mobile */
+  }
+
+  .logo-icon,
+  .title-sub {
+    display: none; /* hide ornaments to prevent header wrap */
+  }
+
+  .nav-tab {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  /* 5. Font scales & paddings optimizations for micro-viewports */
+  .note-title-container {
+    padding: 8px 12px;
+    height: 35px;
+  }
+
+  .note-title-input {
+    font-size: 14px;
+    height: 18px;
+    line-height: 18px;
+  }
+
+  .input-editor {
+    padding-top: 14px; /* 12px mobile padding-top + 2px browser caret offset alignment */
+    padding-bottom: 60px; /* cozy keyboard typing cushion spacing */
+    padding-left: 12px;
+    padding-right: 12px;
+    font-size: 13px;
+  }
+
+  .line-numbers-gutter {
+    width: 36px;
+    padding-top: 14px; /* aligned with mobile textarea padding-top */
+    padding-bottom: 60px; /* matched cushion spacing */
+    padding-right: 8px;
+    font-size: 11px;
+  }
+
+  .row-backgrounds-pane {
+    left: 36px;
+    padding-top: 14px; /* aligned with mobile textarea padding-top */
+    padding-bottom: 60px; /* matched cushion spacing */
+  }
+
+  .results-header-spacer {
+    height: 35px; /* sync title compressed heights */
+  }
+
+  .results-pane {
+    padding-top: 14px; /* aligned with mobile textarea padding-top */
+    padding-bottom: 60px; /* matched cushion spacing */
+    padding-left: 6px;
+    padding-right: 6px;
+    font-size: 13px;
+  }
+
+  /* 6. About Pane layout stacking */
+  .about-pane {
+    padding: 24px 16px;
+  }
+
+  .about-grid {
+    grid-template-columns: 1fr; /* stack cards in a single column */
+    gap: 16px;
+  }
+
+  .about-card {
+    padding: 16px;
+  }
+}
+
+/* Symmetrical update lifecycle toast notifications styles */
+.update-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: var(--accent-color);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  animation: slideDown 0.3s ease;
+  margin-right: 16px;
+}
+
+.btn-update-refresh {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: none;
+  outline: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-update-refresh:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-15px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
